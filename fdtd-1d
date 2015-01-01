@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from params import getParams, makeEnv, makeSource
+from aux import getParams, makeEnv, makeSource
 from constants import imp0
 from scipy import ones, exp, zeros
 import numpy as np
@@ -18,7 +18,17 @@ env = params['env']
 source = params['source']
 locSource = source['loc']
 
-[GE,GH] = makeSource(source, tMax)
+height = source["height"]
+width = source["width"]
+offset = source["offset"]
+omega = 1.0/width
+
+bound = params['bound']
+b = 0
+if bound == 'a':
+    b = 1
+
+#[GE,GH] = makeSource(source, tMax)
 
 imp0 = 377.0     #free space impedence
 
@@ -33,9 +43,6 @@ K = zeros(fn, complex)
 for f in range(fn):
     K[f] = np.exp(-1j*2*pi*freqs[f]*5.5e-11)
 
-#print K**2
-#plot(np.imag(K**2))
-#show()
 FT = zeros(fn, complex)
 FR = zeros(fn, complex)
 FS = zeros(fn, complex)
@@ -48,54 +55,70 @@ e = zeros(L)
 
 ion()
 figure(0)
+
 print 'setup successful, entering time loop'
+es = []
+hs = []
+
+#make source
+for t in range(tMax):
+    if source["type"] == 'g' and source["tfsf"] == True:
+        es.append(height*exp(-(t+0.5-(-0.5)-offset) * (t+0.5-(-0.5)-offset) / float(width**2)))
+        hs.append(height*exp(-(t-offset) * (t-offset) / float(width**2)) / imp0)
+    elif source["type"] == 'g' and source["tfsf"] == False:
+        es.append(height*exp(-(t-offset) * (t-offset) / float(width**2)))
+        hs.append(height*exp(-(t-offset) * (t-offset) / float(width**2)) / imp0)
+    elif source["type"] == 's' and source["tfsf"] == True:
+        es.append(height*np.sin(omega*(t-offset)+1))
+        hs.append(height*np.sin(omega*(t-offset)))
+    elif source["type"] == 's' and source["tfsf"] == False:
+        es.append(height*np.sin(omega*(t-offset)))
+        hs.append(height*np.sin(omega*(t-offset)))
 
 for t in range(tMax):
-    # TODO: Find out why exactly there is a subtle difference in the incremental
-    # electric and magnetic fields. Solution-wise, there is no noticable
-    # difference.
-    
+
     # TODO: Find out why the ABCs must be given *before* the corresponding 
     # update equation. I'd have thought that it should be done *after*.
-    h[-1] = h[-2]
+    h[-1] = h[-2]*b
     
     h[:-1] = h[:-1] + (e[1:] - e[:-1]) / (imp0 * mu[:-1])
     
-    h[locSource-1] += GH[t]
+    h[locSource-1]  += hs[t]#hyinc#+= GH[t]
     
-    e[0] = e[1]
+    e[0] = e[1]*b
     
     e[1:] = e[1:] + (h[1:] - h[:-1]) * imp0 / eps[1:]
     
-    e[locSource] += GE[t]
+    e[locSource]  -= es[t]#ezinc#+= GE[t]
 
     kern = np.power(K,t)
 
-    FS[:] = FS[:] + GE[t]*kern[:]*5.5e-11
-    FT[:] = FT[:] + e[-1]*kern[:]*5.5e-11
-  #  if t > 5000:
-    FR[:] = FR[:] + e[3]*kern[:]*5.5e-11
+    FS[:] = FS[:] + es[t]*kern[:]#*5.5e-11
+    FT[:] = FT[:] + e[-1]*kern[:]#*5.5e-11
+    FR[:] = FR[:] + e[0]*kern[:]#*5.5e-11
 
     if t%skip == 0:
         clf()
-        subplot(2, 1, 1)
+        subplot(3, 1, 1)
+        plot(eps, "g-")
+        plot(mu, "r-")
+        xlabel('position')
+        ylabel('relative val')
+        legend(['eps', 'mu'])
+        subplot(3, 1, 2)
         plot(e)
         plot(h*imp0)
-        ylim([-2,2])
+    #    ylim([-2,2])
         xlabel('position (meters)')
         ylabel('Field')
         text(L/100,1,'t = ' + str(t))
         legend(['E', 'H'])
-        subplot(2, 1, 2)
-        #plot(FS)
-    #    plot(FS)
-    #    plot(FT)
-    #    plot(FR)
+        subplot(3, 1, 3)
         plot(freqs,(np.absolute(FR)**2+np.absolute(FT)**2)/np.absolute(FS)**2)
         plot(freqs,np.divide(np.absolute(FT)**2, np.absolute(FS)**2))
         plot(freqs,np.divide(np.absolute(FR)**2, np.absolute(FS)**2))
         ylim([-1,2])
-        legend(['|T|^2 + |R|^2', '|T|^2', '|R|^2'])
+        legend(['tot.', 'trans.', 'ref.'])
         xlabel('frequency (Hz)')
         ylabel('Fraction')
         draw()

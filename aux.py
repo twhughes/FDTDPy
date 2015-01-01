@@ -6,7 +6,7 @@ def getParams():
 	print ''
 	params = {}
 	#would like to make text file simpler but works in dictionary sytanx for now
-	with open('myfile.txt','r') as inf:
+	with open('input.txt','r') as inf:
 		params = eval(inf.read())
 	return params
 
@@ -35,21 +35,21 @@ def makeSource(source, tMax):
 	kind = source['type']
 	offset = source['offset']
 
-	E = zeros(tMax)
-	H = zeros(tMax)
+	E = []
+	H = []
 
 	#note, this is not TFSF technically
 	if (kind == 'g') and (tfsf == True):
 		dt = 0
 		for t in range(tMax):
-			E[t] = exp(-(t+0.5-(-0.5)-30) * (t+0.5-(-0.5)-30) / 100.0)
-			H[t] = -1.0*exp(-(t-30) * (t-30) / 100.0) / imp0
-			#E[t] =    height*exp(-(float(t - offset + 2.0/3)*(t-offset + 2.0/3)/width/width))
+			E.append( exp(-(t+0.5-(-0.5)-30) * (t+0.5-(-0.5)-30) / 100.0) )
+			H.append(-1.0*exp(-(t-30) * (t-30) / 100.0) / imp0)
+		#	E.append(  height*exp(-(float(t - offset + 2.0/3)*(t-offset + 2.0/3)/width/width))
 			#H[t] = -1*height*exp(-(float(t - offset)*(t-offset)/width/width))/imp0
 		print 'TFSF source created successfully'
 		#plot(E)
 		#plot(-1*H)
-		show()
+	#	show()
 		return [E,H]
 
 
