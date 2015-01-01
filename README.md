@@ -1,6 +1,9 @@
 FDTDPy
 ======
 
+![alt tag](https://raw.githubusercontent.com/twhughes/FDTDPy/master/ex.png)
+
+
 (Currently) 1D FDTD solver and real time visualizer.
 
 Can choose gaussian or sin source, and control parameters.
